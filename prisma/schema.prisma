@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MENTOR
+  INTERN
+}
+
+enum Status {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  role      Role     @default(INTERN)
+  status    Status   @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  internProfile InternProfile?
+  mentorProfile Mentor?
+  
+  tasksAssigned Task[] @relation("AssignedBy")
+  tasksReceived Task[] @relation("AssignedTo")
+  
+  attendances   Attendance[]
+  certificates  Certificate[]
+  notifications Notification[]
+}
+
+model InternProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone           String?
+  college         String?
+  department      String?
+  skills          String[]
+  linkedin        String?
+  resumeUrl       String?
+  profileImageUrl String?
+  preferredDomain String?
+}
+
+model Mentor {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domainId  String?
+  domain    Domain?  @relation(fields: [domainId], references: [id])
+}
+
+model Domain {
+  id         String   @id @default(cuid())
+  domainName String   @unique
+  mentors    Mentor[]
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String
+  deadline    DateTime
+  status      TaskStatus @default(TODO)
+  priority    String     @default("medium") // high, medium, low
+  score       Int?       // Nullable, assigned by mentor when approved
+  assignedById String
+  assignedToId String
+  assignedBy  User       @relation("AssignedBy", fields: [assignedById], references: [id], onDelete: Cascade)
+  assignedTo  User       @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: Cascade)
+  submissionUrl String?
+  submissionDate DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Attendance {
+  id       String    @id @default(cuid())
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkin  DateTime
+  checkout DateTime?
+  date     DateTime  @default(now())
+}
+
+model Certificate {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  issueDate DateTime @default(now())
+  fileUrl   String?
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  type      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
